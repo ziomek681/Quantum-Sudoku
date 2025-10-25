@@ -1,3 +1,12 @@
 Running the code
-Python file
-1. Download QSudoku.py
+a) by Python file
+  1. Download QSudoku.py
+  2. Open file in python >3.10 and set graphics backend on automatic
+  3. Install libraries: random, numpy, scipy.optimize, matplotlib.pyplot, matplotlib.patches, tkinter
+  4. Run the game :)
+b) by .exe file
+  1. Open https://drive.google.com/drive/folders/1rfC-iiuDH_DGQSfCCLB-x6beQjWYM-Wt?usp=drive_link
+  2. Download .exe file (file was compiled on windows 10)
+  3. Run the game :)
+
+Link to the video recording and screenshot of the game: https://drive.google.com/drive/folders/1rfC-iiuDH_DGQSfCCLB-x6beQjWYM-Wt?usp=drive_link
