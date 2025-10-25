@@ -1,11 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Oct 25 13:46:02 2025
-
-@author: izuni
-"""
-
-# quantum_sudoku_final.py
 import random
 import numpy as np
 from scipy.optimize import linprog
@@ -13,9 +5,6 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from tkinter import messagebox
 
-# -------------------------
-#  SOLVER / GENERATOR (jak wcześniej, z dtype fixes)
-# -------------------------
 
 class SudokuGenerator:
     def __init__(self, grid):
@@ -34,28 +23,24 @@ class SudokuGenerator:
     def build_constraints(self):
         A_eq, b_eq = [], []
         bounds = [(0, 1) for _ in range(729)]
-        # 1) each cell exact 1
         for i in range(9):
             for j in range(9):
                 row = np.zeros(729, dtype=float)
                 for k in range(9):
                     row[i * 81 + j * 9 + k] = 1.0
                 A_eq.append(row); b_eq.append(1.0)
-        # 2) digit once in row
         for i in range(9):
             for k in range(9):
                 row = np.zeros(729, dtype=float)
                 for j in range(9):
                     row[i * 81 + j * 9 + k] = 1.0
                 A_eq.append(row); b_eq.append(1.0)
-        # 3) digit once in col
         for j in range(9):
             for k in range(9):
                 row = np.zeros(729, dtype=float)
                 for i in range(9):
                     row[i * 81 + j * 9 + k] = 1.0
                 A_eq.append(row); b_eq.append(1.0)
-        # 4) digit once in box
         for br in range(3):
             for bc in range(3):
                 for k in range(9):
@@ -65,7 +50,6 @@ class SudokuGenerator:
                             r = br*3 + di; c = bc*3 + dj
                             row[r * 81 + c * 9 + k] = 1.0
                     A_eq.append(row); b_eq.append(1.0)
-        # 5) prefilled
         for i in range(9):
             for j in range(9):
                 v = int(self.grid[i,j])
@@ -112,7 +96,6 @@ class SudokuGenerator:
         fill()
         return grid
 
-    # fast backtracking MRV (as before)
     def _count_solutions_collect(self, grid_in, stop_after=2, collect_up_to=1):
         try:
             grid = np.array(grid_in, dtype=int).tolist()
@@ -327,24 +310,18 @@ class SudokuGenerator:
                     prefer_target=100, verbose=False
                 )
                 return np.array(grid_multi, dtype=int), solutions, ambiguous
-            # else try again
 
-# -------------------------
-#  GUI (matplotlib) - FINAL with corrections
-# -------------------------
 
 class Sudoku:
     def __init__(self, puzzle, solution, multi_solutions=None, ambiguous_indices=None):
         self.my_init(puzzle, solution, multi_solutions, ambiguous_indices)
 
-        # figure setup
         self.tot_fig = plt.figure(figsize=(6, 7.3))
         self.subfigs = self.tot_fig.subfigures(3, 1, height_ratios=(0.5, 6, 0.8))
         self.fig_menu = self.subfigs[0]; self.fig = self.subfigs[1]; self.fig_counter = self.subfigs[2]
         self.ax = self.fig.subplots()
         self.ax_counter = self.fig_counter.subplots(); self.ax_menu = self.fig_menu.subplots()
 
-        # styling (your palette)
         self.fig_menu.patch.set_facecolor('#f2cbe5')
         self.fig_counter.patch.set_facecolor('#f2cbe5')
         self.fig.patch.set_facecolor('#f2cbe5')
@@ -354,12 +331,10 @@ class Sudoku:
         self.ax_menu.tick_params(length=0); self.ax_menu.set_facecolor('#f2cbe5')
         for spine in self.ax_menu.spines.values(): spine.set_edgecolor('#f2cbe5')
 
-        # events
         self.fig.canvas.mpl_connect('button_press_event', self.onclick)
         self.fig.canvas.mpl_connect('key_press_event', self.onkey)
         self.fig_menu.canvas.mpl_connect('button_press_event', self.onclick_menu)
 
-        # initial draw
         self.draw_buttons(); self.draw_grid(); self.draw_counters()
         self.fig.canvas.manager.set_window_title("Quantum Sudoku")
 
@@ -369,42 +344,32 @@ class Sudoku:
         self.user_grid = self.puzzle.copy()
         self.selected_cell = None
 
-        # givens locked
         self.given_mask = (self.puzzle != 0)
 
-        # all possible solutions (list of lists) and current indices referencing them
         self.all_solutions = [ [row[:] for row in s] for s in (multi_solutions or []) ]
         self.current_solution_indices = list(range(len(self.all_solutions)))
         self.multi_mode = len(self.all_solutions) > 0
 
-        # ambiguous indices = those that differ between remaining solutions
         self.ambiguous_set = set(ambiguous_indices or [])
 
-        # measured_sources: idx -> set(original_solution_indices) that produced this measurement
-        self.measured_sources = {}   # e.g. {idx: {sol_idx1, sol_idx2}}
+        self.measured_sources = {}
         self.measured_indices = set()
 
-        # locked cells (givens + measurements + correct entries)
         self.locked_cells = set((r,c) for r in range(9) for c in range(9) if self.given_mask[r,c])
 
-        # wrong (red) entries set
         self.wrong_entries = set()
 
-        # last correct highlight
         self.last_correct = None
 
-        # candidates
         self.candidates = {}
         self.amb_overlays = {}
         self.cand_text = {}
 
-        # create entangled groups (local groups) from ambiguous_set
         self.entangled_groups = []
         self.index_to_group = {}
         if self.multi_mode and self.ambiguous_set:
             self._build_entangled_groups()
 
-        # insert 2..4 additional measurements ONLY from ambiguous_set and each from different solution
         if self.multi_mode and self.ambiguous_set and self.all_solutions:
             self._insert_additional_measurements(num_additional=min(4, max(2, len(self.ambiguous_set))))
 
@@ -417,7 +382,7 @@ class Sudoku:
         groups = []
         i = 0
         while i < len(amb):
-            size = random.choice([2,2,3])  # prefer 2 sometimes 3
+            size = random.choice([2,2,3])
             group = amb[i:i+size]
             if len(group) >= 2:
                 groups.append(group)
@@ -451,7 +416,6 @@ class Sudoku:
             self.locked_cells.add((r,c))
             used.add(idx)
 
-    # UI menu handlers
     def onclick_menu(self, event):
         if event.inaxes != self.ax_menu: return
         if event.xdata is None or event.ydata is None: return
@@ -482,7 +446,6 @@ class Sudoku:
         self.ax_menu.text(3.46, 0.45, 'exit', ha='center', va='center', fontsize=11, color="black")
         self.fig_menu.canvas.draw_idle()
 
-    # click/select cell
     def onclick(self, event):
         if event.inaxes != self.ax: return
         if event.xdata is None or event.ydata is None: return
@@ -494,24 +457,19 @@ class Sudoku:
             self.selected_cell = (row, col)
             self.draw_grid(); self.draw_counters()
 
-    # key handler (entry)
     def onkey(self, event):
         if self.selected_cell is None: return
         row, col = self.selected_cell
 
-        # backspace: only allowed when not locked (givens/measurements/correct)
         if event.key == "backspace":
             if not self.given_mask[row, col] and (row, col) not in self.locked_cells:
-                # If it was a wrong entry, simply remove it and do NOT alter global splat state
                 if (row, col) in self.wrong_entries:
                     self.user_grid[row, col] = 0
                     self.wrong_entries.discard((row, col))
-                    # recompute candidates for ambiguous fields (but do not filter/prune)
                     if self.multi_mode:
                         self._recompute_candidates()
                     self.draw_grid(); self.draw_counters()
                     return
-                # else (regular removable user entry) — remove and update solution filtering
                 self.user_grid[row, col] = 0
                 if self.multi_mode:
                     self._filter_current_solutions_by_user_grid()
@@ -520,72 +478,54 @@ class Sudoku:
                 self.draw_grid(); self.draw_counters()
             return
 
-        # numeric input
         try:
             val = int(event.key)
         except Exception:
             return
         if not (1 <= val <= 9): return
-        # cannot overwrite givens or locked_cells
         if self.given_mask[row, col] or (row, col) in self.locked_cells:
             return
 
-        #print(self.user_grid)
-        #print(self.solution)
-        # CLASSIC MODE:
         if not self.multi_mode:
             self.user_grid[row, col] = val
             if self.solution[row, col] == val:
-                # correct -> lock and temporary green highlight
                 self.locked_cells.add((row, col))
                 self.last_correct = (row, col)
                 self.wrong_entries.discard((row, col))
             else:
-                # wrong -> stays red until user changes
                 self.wrong_entries.add((row, col))
             self.draw_grid(); self.draw_counters(); self.win()
             return
 
-        # MULTI MODE:
-        # compute remaining solution indices and values in this cell across them
+
         remaining = list(self.current_solution_indices)
         values_in_cell = {self.all_solutions[si][row][col] for si in remaining}
-        # if entered value not compatible -> mark as wrong (red) and do nothing else
         if val not in values_in_cell:
             self.user_grid[row, col] = val
             self.wrong_entries.add((row, col))
             self.draw_grid()
             return
 
-        # if the value is the same across ALL remaining solutions -> treat as ordinary correct (no collapse)
         if len(values_in_cell) == 1:
             self.user_grid[row, col] = val
             self.locked_cells.add((row, col))
             self.last_correct = (row, col)
-            # store measured_sources as the current set (so later pruning will be consistent)
             self.measured_sources[row*9 + col] = set(self.current_solution_indices)
             self.measured_indices.add(row*9 + col)
             self.wrong_entries.discard((row, col))
-            # do not modify ambiguous_set or other fields
             self.draw_grid(); self.draw_counters()
             return
 
-        # otherwise: value compatible with a subset => treat as measurement
         compatible_indices = [si for si in remaining if self.all_solutions[si][row][col] == val]
         if not compatible_indices:
-            # should not happen because we checked earlier, but safe-guard
             self.user_grid[row, col] = val
             self.wrong_entries.add((row, col))
             self.draw_grid()
             return
 
-        # Narrow remaining solutions to the compatible subset, then choose ONE concrete solution
-        # to model the "measurement collapse" for entangled group.
         chosen_sol_idx = random.choice(compatible_indices)
-        # set current solutions to those compatible with the user's pick (we keep all compatible)
         self.current_solution_indices = compatible_indices
 
-        # lock player's cell as measurement (source set = compatible_indices)
         self.user_grid[row, col] = val
         idx = row*9 + col
         self.measured_sources[idx] = set(compatible_indices)
@@ -595,7 +535,6 @@ class Sudoku:
         self.last_correct = (row, col)
         
 
-        # Now apply chosen solution's values ONLY to the entangled group containing this index (if exists).
         if idx in self.index_to_group:
             gi = self.index_to_group[idx]
             group = self.entangled_groups[gi]
@@ -603,44 +542,35 @@ class Sudoku:
             for other_idx in group:
                 r,c = divmod(other_idx, 9)
                 if (r,c) == (row, col): continue
-                # if there was a measured insertion from other sources that is now incompatible -> remove it
                 if other_idx in self.measured_sources:
-                    # if chosen_sol doesn't match that measured value -> remove that measured insertion
                     if chosen_sol[r][c] != self.user_grid[r,c]:
                         self.user_grid[r,c] = 0
                         self.measured_sources.pop(other_idx, None)
                         self.measured_indices.discard(other_idx)
                         self.locked_cells.discard((r,c))
-                        # do not touch other groups or ambiguous_set
                         continue
-                # otherwise, if currently empty -> insert chosen_sol value and lock it as measurement from chosen_sol_idx
                 if self.user_grid[r,c] == 0:
                     self.user_grid[r,c] = chosen_sol[r][c]
                     self.measured_sources[other_idx] = {chosen_sol_idx}
                     self.measured_indices.add(other_idx)
                     self.locked_cells.add((r,c))
 
-        # after measurement narrow ambiguous_set according to the remaining solutions
         remaining_sols = [self.all_solutions[si] for si in self.current_solution_indices]
         self.ambiguous_set = set(self._ambiguous_indices_from_solutions(remaining_sols))
 
-        # prune measured entries whose source sets got eliminated
         self._prune_measured_sources()
 
-        # recompute candidates
         self._recompute_candidates()
 
         self.draw_grid();
         self.draw_counters()
-        # if only one current solution left -> ambiguous_set becomes empty (deterministic)
         if len(self.current_solution_indices) == 1:
             self.ambiguous_set.clear()
             final_index = self.current_solution_indices[0]
-            self.solution = np.array(self.all_solutions[final_index])  # pełne rozwiązanie 9x9
+            self.solution = np.array(self.all_solutions[final_index])
             self.multi_mode = 0
 
 
-    # drawing
     def draw_grid(self):
         self.ax.clear()
         self.ax.set_xlim(0, 9); self.ax.set_ylim(0, 9)
@@ -652,28 +582,23 @@ class Sudoku:
             self.ax.plot([i, i], [0, 9], color='black', linewidth=lw)
             self.ax.plot([0, 9], [i, i], color='black', linewidth=lw)
 
-        # highlight selected cell
         if self.selected_cell:
             r,c = self.selected_cell
             rect = Rectangle((c, 8-r), 1, 1, linewidth=3, edgecolor="#d093bc", facecolor="#d093bc", alpha=1)
             self.ax.add_patch(rect)
 
-        # draw cells
         for i in range(9):
             for j in range(9):
                 idx = i*9 + j
                 v = self.user_grid[i,j]
 
-                # wrong entry full-cell highlight
                 if (i,j) in self.wrong_entries:
                     rec = Rectangle((j, 8 - i), 1, 1, linewidth=0, edgecolor=None, facecolor="#cb294f", alpha=1)
                     self.ax.add_patch(rec)
-                # temporary green highlight for last correct
                 elif self.last_correct == (i,j):
                     rec = Rectangle((j, 8 - i), 1, 1, linewidth=0, edgecolor=None, facecolor="#b6cb29", alpha=1)
                     self.ax.add_patch(rec)
 
-                # text color
                 if v != 0:
                     if self.given_mask[i,j] or idx in self.measured_indices:
                         txt_color = "black"
@@ -686,7 +611,6 @@ class Sudoku:
                 #    s = ''.join(str(vv) for vv in sorted(self.candidates[idx]))
                 #    self.ax.text(j + 0.05, 8 - i + 0.05, s, fontsize=7, alpha=0.8, ha='left', va='bottom')
 
-        # draw splątanie symbol for ambiguous_set
         for idx in self.ambiguous_set:
             r,c = divmod(idx, 9)
             tx = c + 0.78; ty = 8 - r + 0.78
@@ -724,7 +648,6 @@ class Sudoku:
 
         self.fig_counter.canvas.draw_idle()
 
-    # multi helpers
     def _recompute_candidates(self):
         if not self.multi_mode: return
         self.candidates.clear()
@@ -735,7 +658,6 @@ class Sudoku:
             vals = set(s[r][c] for s in remaining)
             self.candidates[idx] = vals
 
-        # autofill singletons (treat as measurement)
         progress = True
         while progress:
             progress = False
@@ -745,11 +667,9 @@ class Sudoku:
                 if self.given_mask[r,c]: continue
                 if self.user_grid[r,c] == val: continue
                 self.user_grid[r,c] = val
-                # measured_sources is copy of current_solution_indices (they all agree)
                 self.measured_sources[idx] = set(self.current_solution_indices)
                 self.measured_indices.add(idx)
                 self.locked_cells.add((r,c))
-                # filter current_solution_indices to those consistent (should be same)
                 self.current_solution_indices = [si for si in self.current_solution_indices if self.all_solutions[si][r][c] == val]
                 progress = True
             if progress:
@@ -790,7 +710,6 @@ class Sudoku:
             if src_set & cur_set:
                 self.measured_sources[idx] = src_set & cur_set
             else:
-                # removed: wipe the measured insertion and unlock the cell
                 r,c = divmod(idx, 9)
                 self.user_grid[r,c] = 0
                 self.measured_indices.discard(idx)
@@ -811,7 +730,6 @@ class Sudoku:
                     ambiguous.append(idx); break
         return ambiguous
 
-    # win / play / instructions
     def win(self):
         if not self.multi_mode and np.array_equal(self.user_grid, self.solution):
             response = messagebox.askquestion('WIN!', 'Wanna play again?', icon='warning')
@@ -828,25 +746,19 @@ class Sudoku:
     def _show_instructions(self):
         txt = (
             "Quantum Sudoku rules:\n\n"
-            "• At the start there is more that 1 solution to the Sudoku\n"
-            "• Cells with different fillings in solutions are entangled\n"
-            "  (marked by symbol ✦).\n"
-            "• At the start there are added 2-4 entangled starting numbers,\n"
-            "  each from other solution.\n"
-            "• If you guess correct number in entangled cell,\n"
-            "  it's treated as measurment: only solutions with that filling are left\n"
-            "  and that may modify/unentangle other cells\n"
-            "• Correct fillings are marked as yellow and blocked\n"
-            "• Wrong fillings are marked as red to the time you correct them.\n"
+            "• At first all possible sudoku solutions are in superposition\n"
+            "• Cells marked with ✦ are entangled with each other\n"
+            "• If you type in the correct number in entangled cell,\n"
+            "  it's treated as measurement:\n"
+            "  your move may modify/unentangle groups of cells\n"
+            "  because of the fact that some solutions are no longer\n"
+            "  possible\n"
         )
         try:
             messagebox.showinfo("Game rules", txt)
         except Exception:
             print(txt)
 
-# -------------------------
-#  START
-# -------------------------
 
 if __name__ == "__main__":
     filled_sudoku = SudokuGenerator.generate_filled_sudoku()
