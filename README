@@ -1,6 +1,10 @@
-Running the code
+The game can be run as (mark all that apply; you need to check at least one):
+1. Windows binary
+2. Python script
+
+Running the game:
 a) by Python file
-  1. Download QSudoku.py
+  1. Download QSudoku.py from github or https://drive.google.com/drive/folders/1rfC-iiuDH_DGQSfCCLB-x6beQjWYM-Wt?usp=drive_link
   2. Open file in python >3.10 and set graphics backend to automatic
   3. Install libraries: random, numpy, scipy, matplotlib, tkinter
   4. Run the game :)
